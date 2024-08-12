@@ -23,10 +23,10 @@ const io = new Server(expressServer, {
 
 
 const db = mysql.createConnection({
-    host: 'https://sql302.infinityfree.com',
-    user: 'if0_37089034',
-    password: 'Df6t2IJdHu1hA',
-    database: 'if0_37089034_ilct_platform'
+    host: 'sql12.freesqldatabase.com',
+    user: 'sql12725465',
+    password: 'J1jSzhDpnh',
+    database: 'sql12725465'
 });
 
 db.connect((err) => {
