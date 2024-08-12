@@ -16,17 +16,17 @@ const expressServer = app.listen(port, () => {
 // const server = http.createServer(app);
 const io = new Server(expressServer, {
     cors: {
-        origin: 'http://localhost:5173', // React app domain
+        origin: 'https://ilct.netlify.app', // React app domain
         methods: ['GET', 'POST']
     }
 });
 
 
 const db = mysql.createConnection({
-    host: 'localhost',
-    user: 'root',
-    password: '',
-    database: 'ilct_platform'
+    host: 'https://sql302.infinityfree.com',
+    user: 'if0_37089034',
+    password: 'Df6t2IJdHu1hA',
+    database: 'if0_37089034_ilct_platform'
 });
 
 db.connect((err) => {
