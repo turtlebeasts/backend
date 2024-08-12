@@ -16,7 +16,8 @@ const expressServer = app.listen(port, () => {
 // const server = http.createServer(app);
 const io = new Server(expressServer, {
     cors: {
-        origin: ['https://ilct.netlify.app', 'localhost:5173'], // React app domain
+        // origin: ['https://ilct.netlify.app', 'localhost:5173'], // React app domain
+        origin: '*',
         methods: ['GET', 'POST']
     }
 });
