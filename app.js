@@ -18,17 +18,11 @@ const expressServer = app.listen(port, () => {
 const io = new Server(expressServer, {
     cors: {
         // origin: ['https://ilct.netlify.app', 'localhost:5173'], // React app domain
-        origin: '*',
-        // origin: 'http://localhost:5173',
+        origin: 'https://ilct.netlify.app',
         methods: ['GET', 'POST']
     }
 });
 
-// console.log('Database connected!');
-// console.log('Host:', process.env.HOST);
-// console.log('User:', process.env.DBUSER);
-// console.log('Database:', process.env.DATABASE);
-// console.log('Password:', process.env.PASSWORD);
 
 const db = mysql.createConnection({
     host: process.env.HOST,
