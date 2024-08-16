@@ -5,6 +5,7 @@ const jwt = require('jsonwebtoken');
 const bcrypt = require('bcryptjs');
 const cors = require('cors');
 const { Server } = require('socket.io');
+require('dotenv').config()
 
 const app = express();
 const port = 5000;
@@ -18,16 +19,22 @@ const io = new Server(expressServer, {
     cors: {
         // origin: ['https://ilct.netlify.app', 'localhost:5173'], // React app domain
         origin: '*',
+        // origin: 'http://localhost:5173',
         methods: ['GET', 'POST']
     }
 });
 
+// console.log('Database connected!');
+// console.log('Host:', process.env.HOST);
+// console.log('User:', process.env.DBUSER);
+// console.log('Database:', process.env.DATABASE);
+// console.log('Password:', process.env.PASSWORD);
 
 const db = mysql.createConnection({
-    host: 'sql12.freesqldatabase.com',
-    user: 'sql12725465',
-    password: 'J1jSzhDpnh',
-    database: 'sql12725465'
+    host: process.env.HOST,
+    user: process.env.DBUSER,
+    password: process.env.PASSWORD,
+    database: process.env.DATABASE
 });
 
 db.connect((err) => {
@@ -55,6 +62,7 @@ const verifyToken = (req, res, next) => {
 // Registration endpoint
 app.post('/register', async (req, res) => {
     const { firstName, lastName, email, password } = req.body;
+    console.log(req.body)
 
     if (!firstName || !lastName || !email || !password) {
         return res.status(400).send('All fields are required.');
@@ -62,7 +70,12 @@ app.post('/register', async (req, res) => {
 
     try {
         // Check if the user already exists
-        db.query('SELECT email FROM users WHERE email = ?', [email], async (err, results) => {
+        const query = 'SELECT email FROM users WHERE email = ?';
+        const formattedQuery = mysql.format(query, [email]);
+        console.log("Performing SQL query: ", formattedQuery);
+        db.query(formattedQuery, async (err, results) => {
+
+            if (err) console.log(err.message)
             if (err) return res.status(500).send('Error checking user existence.');
 
             if (results.length > 0) return res.status(400).send('User already exists.');
@@ -88,7 +101,11 @@ app.post('/login', (req, res) => {
 
     if (!email || !password) return res.status(400).send('Email and password are required.');
 
-    db.query('SELECT * FROM users WHERE email = ?', [email], (err, results) => {
+    const query = 'SELECT * FROM users WHERE email = ?';
+    const formattedQuery = mysql.format(query, [email]);
+    console.log("Performing SQL query: ", formattedQuery);
+    db.query(formattedQuery, (err, results) => {
+        if (err) console.log(err.message)
         if (err) return res.status(500).send('Error querying user.');
 
         if (results.length === 0) return res.status(401).send('Invalid email or password.');
@@ -159,7 +176,9 @@ app.get('/channels', verifyToken, (req, res) => {
 
 // API endpoint to fetch messages for a channel
 app.get('/channels/:channelId/messages', verifyToken, (req, res) => {
+    console.log("Got message request")
     const channelId = req.params.channelId;
+    console.log(channelId)
     const query = 'SELECT m.id, m.content, u.email FROM messages m JOIN users u ON m.user_id = u.id WHERE m.channel_id = ? ORDER BY m.created_at';
     db.query(query, [channelId], (err, results) => {
         if (err) return res.status(500).send('Error fetching messages.');
