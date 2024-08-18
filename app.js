@@ -31,7 +31,13 @@ const db = mysql.createConnection({
 });
 
 db.connect((err) => {
-    if (err) throw err;
+    if (err) {
+        console.log(err.message)
+        console.log("host:", process.env.HOST,
+            "\nuser:", process.env.DBUSER,
+            "\npassword:", process.env.PASSWORD,
+            "\ndatabase:", process.env.DATABASE)
+    };
     console.log('Database connected!');
 });
 
