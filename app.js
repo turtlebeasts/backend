@@ -37,8 +37,9 @@ db.connect((err) => {
             "\nuser:", process.env.DBUSER,
             "\npassword:", process.env.PASSWORD,
             "\ndatabase:", process.env.DATABASE)
-    };
-    console.log('Database connected!');
+    } else {
+        console.log('Database connected!');
+    }
 });
 
 app.use(cors()); // Enabling CORS
