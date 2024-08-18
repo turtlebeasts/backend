@@ -17,8 +17,7 @@ const expressServer = app.listen(port, () => {
 // const server = http.createServer(app);
 const io = new Server(expressServer, {
     cors: {
-        // origin: ['https://ilct.netlify.app', 'localhost:5173'], // React app domain
-        origin: 'https://ilct.netlify.app',
+        origin: process.env.ORIGIN,
         methods: ['GET', 'POST']
     }
 });
@@ -56,7 +55,6 @@ const verifyToken = (req, res, next) => {
 // Registration endpoint
 app.post('/register', async (req, res) => {
     const { firstName, lastName, email, password } = req.body;
-    console.log(req.body)
 
     if (!firstName || !lastName || !email || !password) {
         return res.status(400).send('All fields are required.');
@@ -66,7 +64,6 @@ app.post('/register', async (req, res) => {
         // Check if the user already exists
         const query = 'SELECT email FROM users WHERE email = ?';
         const formattedQuery = mysql.format(query, [email]);
-        console.log("Performing SQL query: ", formattedQuery);
         db.query(formattedQuery, async (err, results) => {
 
             if (err) console.log(err.message)
@@ -97,7 +94,6 @@ app.post('/login', (req, res) => {
 
     const query = 'SELECT * FROM users WHERE email = ?';
     const formattedQuery = mysql.format(query, [email]);
-    console.log("Performing SQL query: ", formattedQuery);
     db.query(formattedQuery, (err, results) => {
         if (err) console.log(err.message)
         if (err) return res.status(500).send('Error querying user.');
@@ -114,7 +110,6 @@ app.post('/login', (req, res) => {
             const token = jwt.sign({ id: user.id, email: user.email }, 'your_jwt_secret', { expiresIn: '1h' });
             db.query('SELECT * FROM `users` WHERE `email`=?', [email], (err, results) => {
                 res.json({ token, user: { id: results[0].id, email: results[0].email } });
-                // console.log(results[0].id)
             })
         });
     });
@@ -153,6 +148,7 @@ app.post('/add-channel', verifyToken, (req, res) => {
                         });
                     }
                     res.status(200).send({ channelId });
+                    io.emit('channel_created')
                 });
             });
         });
@@ -170,9 +166,7 @@ app.get('/channels', verifyToken, (req, res) => {
 
 // API endpoint to fetch messages for a channel
 app.get('/channels/:channelId/messages', verifyToken, (req, res) => {
-    console.log("Got message request")
     const channelId = req.params.channelId;
-    console.log(channelId)
     const query = 'SELECT m.id, m.content, u.email FROM messages m JOIN users u ON m.user_id = u.id WHERE m.channel_id = ? ORDER BY m.created_at';
     db.query(query, [channelId], (err, results) => {
         if (err) return res.status(500).send('Error fetching messages.');
@@ -205,13 +199,68 @@ app.post('/channels/:channelId/messages', verifyToken, (req, res) => {
     });
 });
 
-// Socket.IO connection
+app.delete('/delete-channel/:channelId', verifyToken, (req, res) => {
+    const channelId = req.params.channelId;
+    if (!channelId) return res.status(400).send('Channel ID is required.');
+
+    db.beginTransaction((err) => {
+        if (err) return res.status(500).send('Error starting transaction.');
+
+        // First, delete the channel-users associations
+        db.query('DELETE FROM channel_users WHERE channel_id = ?', [channelId], (err) => {
+            if (err) {
+                return db.rollback(() => {
+                    res.status(500).send('Error removing users from channel.');
+                });
+            }
+
+            // Then, delete the channel itself
+            db.query('DELETE FROM channels WHERE id = ?', [channelId], (err) => {
+                if (err) {
+                    return db.rollback(() => {
+                        res.status(500).send('Error deleting channel.');
+                    });
+                }
+
+                db.commit((err) => {
+                    if (err) {
+                        return db.rollback(() => {
+                            res.status(500).send('Error committing transaction.');
+                        });
+                    }
+                    res.status(200).send('Channel deleted successfully.');
+                    io.emit('channel_delete')
+                });
+            });
+        });
+    });
+});
+
+app.put('/rename-channel/:channelId', verifyToken, (req, res) => {
+    const channelId = req.params.channelId;
+    const { newName } = req.body;
+
+    if (!newName) return res.status(400).send('New channel name is required.');
+
+    db.query('UPDATE channels SET name = ? WHERE id = ?', [newName, channelId], (err, result) => {
+        if (err) {
+            return res.status(500).send('Error renaming channel.');
+        }
+
+        if (result.affectedRows === 0) {
+            return res.status(404).send('Channel not found.');
+        }
+
+        res.status(200).send('Channel renamed successfully.');
+        io.emit('channel_rename', { id: channelId, channel_name: newName })
+    });
+});
+
+
 io.on('connection', (socket) => {
-    // console.log('a user connected');
 
     socket.on('joinChannel', (channelId) => {
         socket.join(channelId);
-        // console.log(`User joined channel: ${channelId}`);
     });
 
     socket.on('leaveChannel', (channelId) => {
