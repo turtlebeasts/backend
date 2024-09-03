@@ -112,9 +112,21 @@ const rename_channel = (req, res) => {
     });
 }
 
+const channel_members = (req, res) => {
+    const channelId = req.params.channelId;
+    const formattedQuery = "SELECT * FROM channel_users INNER JOIN users ON channel_users.user_id=users.id WHERE channel_users.channel_id=?"
+    db.query(formattedQuery, [channelId], (err, result) => {
+        if (err) {
+            return res.status(500).send('Error fetching users')
+        }
+        res.status(200).json(result)
+    })
+}
+
 module.exports = {
     add_channel,
     get_channel_list,
     delete_channel,
-    rename_channel
+    rename_channel,
+    channel_members
 }
