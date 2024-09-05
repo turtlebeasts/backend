@@ -101,10 +101,49 @@ const channel_members = async (req, res) => {
     }
 }
 
+const search_channels = async (req, res) => {
+    const { channel_name } = req.body;
+
+    if (!channel_name) return res.status(400).send('Search term cannot be empty!');
+
+    try {
+        const [results] = await db.query("SELECT * FROM channels WHERE name LIKE ?", [`%${channel_name}%`]);
+        res.status(200).json(results)
+    } catch (err) {
+        console.error('Error searching channels', err)
+        res.status(500).send('Error searching channels');
+    }
+}
+
+const join_channel = async (req, res) => {
+    const userId = req.userId;
+    const channelId = req.body.channel_id
+
+    try {
+        const [isUserPresent] = await db.query('SELECT * FROM `channel_users` WHERE user_id=? AND channel_id=?', [userId, channelId])
+        if (isUserPresent.length) {
+            res.status(200).json({ code: 403, message: 'Already joined' })
+        } else {
+            try {
+                const [result] = await db.query("INSERT INTO channel_users (channel_id, user_id) VALUES (?, ?)", [channelId, userId])
+                if (result.affectedRows) res.status(200).json({ code: 200, message: 'Joined' })
+            } catch (err) {
+                console.error('Error inserting to database', err)
+                res.status(500).send('Error inserting to databse')
+            }
+        }
+    } catch (error) {
+        console.error('Error checking for user existence', error)
+        res.status(500).send('Error checking for user existence')
+    }
+}
+
 module.exports = {
     add_channel,
     get_channel_list,
     delete_channel,
     rename_channel,
-    channel_members
+    channel_members,
+    search_channels,
+    join_channel
 }
