@@ -3,7 +3,7 @@ const socketManager = require('../middleware/socketIo');
 
 const add_channel = async (req, res) => {
     const io = socketManager.getIO();
-    const { name } = req.body;
+    const { name, isPrivate } = req.body;
     const userId = req.userId; // ID of the user creating the channel
 
     if (!name) return res.status(400).send('Channel name is required.');
@@ -12,7 +12,7 @@ const add_channel = async (req, res) => {
     try {
         await connection.beginTransaction();
 
-        const [result] = await connection.query('INSERT INTO channels (name) VALUES (?)', [name]);
+        const [result] = await connection.query('INSERT INTO channels (name, visibility) VALUES (?, ?)', [name, isPrivate]);
         const channelId = result.insertId;
 
         await connection.query('INSERT INTO channel_users (channel_id, user_id) VALUES (?, ?)', [channelId, userId]);
@@ -69,12 +69,12 @@ const delete_channel = async (req, res) => {
 const rename_channel = async (req, res) => {
     const io = socketManager.getIO();
     const channelId = req.params.channelId;
-    const { newName } = req.body;
+    const { newName, isPrivate } = req.body;
 
     if (!newName) return res.status(400).send('New channel name is required.');
 
     try {
-        const [result] = await db.query('UPDATE channels SET name = ? WHERE id = ?', [newName, channelId]);
+        const [result] = await db.query('UPDATE channels SET name = ?, visibility = ? WHERE id = ?', [newName, isPrivate, channelId]);
 
         if (result.affectedRows === 0) {
             return res.status(404).send('Channel not found.');
@@ -107,7 +107,7 @@ const search_channels = async (req, res) => {
     if (!channel_name) return res.status(400).send('Search term cannot be empty!');
 
     try {
-        const [results] = await db.query("SELECT * FROM channels WHERE name LIKE ?", [`%${channel_name}%`]);
+        const [results] = await db.query("SELECT * FROM channels WHERE name LIKE ? AND visibility=0", [`%${channel_name}%`]);
         res.status(200).json(results)
     } catch (err) {
         console.error('Error searching channels', err)
