@@ -4,7 +4,7 @@ module.exports = {
     init: (server) => {
         io = require('socket.io')(server, {
             cors: {
-                origin: process.env.ORIGIN,
+                origin: [process.env.ORIGIN_1, process.env.ORIGIN_2],
                 methods: ['GET', 'POST']
             }
         });
